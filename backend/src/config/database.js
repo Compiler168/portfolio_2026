@@ -1,25 +1,25 @@
-const mysql = require('mysql2/promise');
+const mongoose = require('mongoose');
 
-const pool = mysql.createPool({
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+let isConnected = false;
 
 const connectDB = async () => {
+    if (isConnected) {
+        console.log('Using existing MongoDB connection');
+        return;
+    }
+
     try {
-        const connection = await pool.getConnection();
-        console.log('MySQL Connected Successfully');
-        connection.release();
-        return pool;
+        const conn = await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+
+        isConnected = true;
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error('MySQL Connection Error:', error.message);
-        process.exit(1);
+        console.error('MongoDB Connection Error:', error.message);
+        throw error;
     }
 };
 
-module.exports = { connectDB, pool };
+module.exports = { connectDB };

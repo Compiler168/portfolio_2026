@@ -1,29 +1,38 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { connectDB } = require('./config/database');
+const { connectDB } = require('./src/config/database');
 
 // Import routes
-const contactRoutes = require('./routes/contactRoutes');
+const contactRoutes = require('./src/routes/contactRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-    origin: '*', // Allow all for simplicity since this is personal portfolio
-    methods: ['GET', 'POST'],
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Connect to MongoDB before handling requests
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (error) {
+        res.status(500).json({ error: 'Database connection failed' });
+    }
+});
 
 // API Routes
 app.use('/api/contact', contactRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'Server is running' });
+    res.json({ status: 'Server is running', database: 'MongoDB' });
 });
 
 // 404 handler
@@ -37,20 +46,12 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-// Connect to database and start server
-const startServer = async () => {
-    try {
-        await connectDB();
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-            console.log(`Environment: ${process.env.NODE_ENV}`);
-        });
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
-};
-
-startServer();
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
 
 module.exports = app;

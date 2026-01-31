@@ -1,30 +1,58 @@
-const { pool } = require('../config/database');
+const mongoose = require('mongoose');
 
-// Contact Message Model
-class ContactMessage {
-    static async getAll() {
-        const [rows] = await pool.query('SELECT * FROM contact_messages ORDER BY created_at DESC');
-        return rows;
+const contactMessageSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'Name is required'],
+        trim: true,
+        maxlength: [100, 'Name cannot exceed 100 characters']
+    },
+    email: {
+        type: String,
+        required: [true, 'Email is required'],
+        trim: true,
+        lowercase: true,
+        match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    },
+    subject: {
+        type: String,
+        required: [true, 'Subject is required'],
+        trim: true,
+        maxlength: [200, 'Subject cannot exceed 200 characters']
+    },
+    message: {
+        type: String,
+        required: [true, 'Message is required'],
+        trim: true,
+        maxlength: [5000, 'Message cannot exceed 5000 characters']
+    },
+    isRead: {
+        type: Boolean,
+        default: false
     }
+}, {
+    timestamps: true
+});
 
-    static async create(data) {
-        const { name, email, subject, message } = data;
-        const [result] = await pool.query(
-            'INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)',
-            [name, email, subject, message]
-        );
-        return result.insertId;
-    }
+// Static methods
+contactMessageSchema.statics.getAll = function () {
+    return this.find().sort({ createdAt: -1 });
+};
 
-    static async markAsRead(id) {
-        await pool.query('UPDATE contact_messages SET is_read = 1 WHERE id = ?', [id]);
-        return true;
-    }
+contactMessageSchema.statics.createMessage = async function (data) {
+    const message = new this(data);
+    await message.save();
+    return message._id;
+};
 
-    static async delete(id) {
-        await pool.query('DELETE FROM contact_messages WHERE id = ?', [id]);
-        return true;
-    }
-}
+contactMessageSchema.statics.markAsRead = async function (id) {
+    await this.findByIdAndUpdate(id, { isRead: true });
+    return true;
+};
 
-module.exports = ContactMessage;
+contactMessageSchema.statics.deleteMessage = async function (id) {
+    await this.findByIdAndDelete(id);
+    return true;
+};
+
+module.exports = mongoose.models.ContactMessage || mongoose.model('ContactMessage', contactMessageSchema);

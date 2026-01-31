@@ -22,10 +22,14 @@ exports.submitContactForm = async (req, res) => {
         }
 
         // Save to database
-        const id = await ContactMessage.create({ name, email, subject, message });
+        const id = await ContactMessage.createMessage({ name, email, subject, message });
 
-        // Send email to admin
-        await sendContactEmail(name, email, subject, message);
+        // Send email to admin (optional, skip if not configured)
+        try {
+            await sendContactEmail(name, email, subject, message);
+        } catch (emailError) {
+            console.log('Email notification skipped:', emailError.message);
+        }
 
         res.status(201).json({ success: true, id, message: 'Message sent successfully' });
     } catch (error) {
@@ -46,7 +50,7 @@ exports.markAsRead = async (req, res) => {
 // Delete contact message (Admin only)
 exports.deleteMessage = async (req, res) => {
     try {
-        await ContactMessage.delete(req.params.id);
+        await ContactMessage.deleteMessage(req.params.id);
         res.json({ message: 'Message deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
